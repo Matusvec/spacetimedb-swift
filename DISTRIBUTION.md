@@ -1,66 +1,76 @@
-# Release Runbook
+# Swift SDK Distribution Runbook
 
-This repository is the public Swift Package Manager source of truth for `SpacetimeDB`. `Package.swift`, `Sources`, and `Tests` remain at repository root so consumers and Swift Package Index can use each release tag directly.
+This runbook defines how to ship `sdks/swift` as a standalone public Swift package for SPM and Swift Package Index.
 
-## Version Policy
+Execution checklist (submission + badge verification):
 
-Releases use semantic version tags in the form `vX.Y.Z`.
+- `sdks/swift/SPI_SUBMISSION_CHECKLIST.md`
 
-- While the SDK is below `1.0`, use a minor release for source-breaking API or deployment-target changes.
-- Use a patch release for compatible fixes.
-- Keep the package dependency snippet, changelog, and release notes on the same version.
+## Why Mirror Is Required
 
-The next planned release is `0.22.0`.
+The monorepo root is not a Swift package root. Public SPM consumers and Swift Package Index expect `Package.swift` at repository root.
 
-## Preflight
+Use a dedicated mirror repository that contains the contents of `sdks/swift` at repository root (for example: `spacetimedb-swift`).
 
-Run from repository root on the release commit:
+## One-Time Setup
 
-```bash
-swift --version
-swift package describe
-swift test
-NSUnbufferedIO=YES swift test --sanitize=thread
-swift build -c release
-xcodebuild -scheme SpacetimeDB -destination 'generic/platform=iOS Simulator' -configuration Release CODE_SIGNING_ALLOWED=NO build
-xcodebuild -scheme SpacetimeDB -destination 'generic/platform=visionOS Simulator' -configuration Release CODE_SIGNING_ALLOWED=NO build
-xcodebuild -scheme SpacetimeDB -destination 'generic/platform=watchOS Simulator' -configuration Release CODE_SIGNING_ALLOWED=NO build
-swift package --package-path Benchmarks benchmark list
-xcodebuild docbuild -scheme SpacetimeDB -destination 'generic/platform=macOS' CODE_SIGNING_ALLOWED=NO
-git diff --exit-code
-git status --short
-```
+1. Create the public mirror repository.
+2. Clone it locally.
+3. Add/keep `sdks/swift/.spi.yml` in mirror root.
+4. Ensure `README.md` includes Swift Package Index links/badges once package is indexed.
 
-The cross-build commands require the corresponding Xcode platform components. CI uses GitHub's `macos-26` image, which includes the iOS, visionOS, and watchOS SDKs.
+## Sync And Release Automation
 
-The root package intentionally has no third-party dependencies and therefore does not commit a root `Package.resolved`. Benchmark-only dependencies live under `Benchmarks` and its lockfile is ignored.
+Automation script:
 
-## Cut A Release
+- `tools/swift-package-mirror.sh`
 
-1. Replace `Unreleased` in `CHANGELOG.md` with the release date.
-2. Confirm README installation examples reference the release version.
-3. Commit the release metadata on `main`.
-4. Create and push an annotated tag.
-5. Publish matching GitHub release notes.
+Sync only:
 
 ```bash
-export VERSION="0.22.0"
-
-git switch main
-git pull --ff-only origin main
-git tag -a "v$VERSION" -m "SpacetimeDB Swift SDK $VERSION"
-git push origin main "v$VERSION"
-gh release create "v$VERSION" --title "SpacetimeDB Swift SDK $VERSION" --generate-notes
+tools/swift-package-mirror.sh sync --mirror ../spacetimedb-swift
 ```
 
-Do not move or replace an existing release tag. Increment the patch version if a tag already exists.
-
-## Verify Distribution
+Create release commit + tag:
 
 ```bash
-git ls-remote --tags origin "refs/tags/v$VERSION"
-curl -fsSL "https://swiftpackageindex.com/api/packages/avias8/spacetimedb-swift/badge?type=swift-versions"
-curl -fsSL "https://swiftpackageindex.com/api/packages/avias8/spacetimedb-swift/badge?type=platforms"
+tools/swift-package-mirror.sh release --mirror ../spacetimedb-swift --version 0.21.0
 ```
 
-Verify the package page at <https://swiftpackageindex.com/avias8/spacetimedb-swift>, its generated documentation, and a clean install in a new Xcode project.
+Create release and push:
+
+```bash
+tools/swift-package-mirror.sh release --mirror ../spacetimedb-swift --version 0.21.0 --push
+```
+
+## Swift Package Index Submission
+
+1. Confirm mirror repository is public and contains package at root.
+2. Push release tag (`vX.Y.Z`) in the mirror repository.
+3. Submit package URL at:
+   - <https://swiftpackageindex.com/add-a-package>
+4. Wait for indexing + documentation build to complete.
+
+## Swift Package Index Badge/Link Templates
+
+Replace `<owner>/<repo>` with the mirror repository coordinates.
+
+Package page:
+
+- `https://swiftpackageindex.com/<owner>/<repo>`
+
+Swift versions badge:
+
+- `https://img.shields.io/endpoint?url=https://swiftpackageindex.com/api/packages/<owner>/<repo>/badge?type=swift-versions`
+
+Platforms badge:
+
+- `https://img.shields.io/endpoint?url=https://swiftpackageindex.com/api/packages/<owner>/<repo>/badge?type=platforms`
+
+## Verification Checklist
+
+- Mirror repo root contains `Package.swift`, `Sources`, `Tests`, `.spi.yml`.
+- Mirror release tag pushed (`vX.Y.Z`).
+- Package appears on Swift Package Index.
+- Swift Package Index docs build succeeds.
+- README in mirror repo contains working SPI package link and badges.

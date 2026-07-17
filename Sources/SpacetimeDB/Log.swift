@@ -1,5 +1,4 @@
 import os
-import Synchronization
 
 public enum SpacetimeLogLevel: String, Sendable {
     case debug
@@ -74,31 +73,8 @@ public struct OSLogSpacetimeLogger: SpacetimeLogger {
 }
 
 public enum SpacetimeObservability {
-    private struct State {
-        var logger: any SpacetimeLogger = OSLogSpacetimeLogger()
-        var metrics: any SpacetimeMetrics = NoopSpacetimeMetrics()
-    }
-
-    private static let state: Mutex<State> = Mutex(State())
-    private static let hasCustomMetrics = Atomic(false)
-
-    public static var logger: any SpacetimeLogger {
-        get { state.withLock { $0.logger } }
-        set { state.withLock { $0.logger = newValue } }
-    }
-
-    public static var metrics: any SpacetimeMetrics {
-        get { state.withLock { $0.metrics } }
-        set {
-            state.withLock { $0.metrics = newValue }
-            hasCustomMetrics.store(!(newValue is NoopSpacetimeMetrics), ordering: .releasing)
-        }
-    }
-
-    static var activeMetrics: (any SpacetimeMetrics)? {
-        guard hasCustomMetrics.load(ordering: .acquiring) else { return nil }
-        return state.withLock { $0.metrics }
-    }
+    public nonisolated(unsafe) static var logger: any SpacetimeLogger = OSLogSpacetimeLogger()
+    public nonisolated(unsafe) static var metrics: any SpacetimeMetrics = NoopSpacetimeMetrics()
 }
 
 enum Log {

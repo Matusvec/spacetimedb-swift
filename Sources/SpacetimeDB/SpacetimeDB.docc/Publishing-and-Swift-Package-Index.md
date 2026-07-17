@@ -1,29 +1,47 @@
-# Publishing DocC and Swift Package Index Releases
+# Publishing DocC and Submitting to Swift Package Index
 
-The public package is hosted at <https://github.com/avias8/spacetimedb-swift>. Its root manifest can be consumed directly by Swift Package Manager and is listed at <https://swiftpackageindex.com/avias8/spacetimedb-swift>.
+## Repository shape requirement
 
-## Prepare A Release
+Swift Package Manager dependencies and Swift Package Index expect a package at repository root.
 
-- Keep `Package.swift`, `Sources`, `Tests`, `.spi.yml`, and `LICENSE.txt` at repository root.
-- Keep third-party benchmark dependencies isolated under `Benchmarks`.
-- Update the README dependency version and `CHANGELOG.md` together.
-- Run the macOS test/release build and all declared Apple simulator builds.
+This monorepo places the Swift package under `sdks/swift`, so public distribution should use a dedicated Swift package repository (for example `spacetimedb-swift`) that mirrors this directory at root.
 
-## Build Documentation
+## 1. Prepare the package repo
+
+- Mirror `sdks/swift` to a standalone repository root.
+- Keep `Package.swift`, `Package.resolved`, `Sources`, and `Tests` at that root.
+- Keep `.spi.yml` at that root (see file in this SDK directory).
+
+## 2. Tag releases
+
+- Use semantic versioning tags (`v0.1.0`, `v0.2.0`, ...).
+- Ensure the tag includes updated DocC content and changelog notes.
+
+## 3. Build DocC locally
+
+From package root:
 
 ```bash
-xcodebuild docbuild \
-  -scheme SpacetimeDB \
-  -destination 'generic/platform=macOS' \
-  CODE_SIGNING_ALLOWED=NO
+tools/swift-docc-smoke.sh
 ```
 
-Swift Package Index reads `.spi.yml` and builds documentation for `SpacetimeDB` from the semantic-version tag.
+## 4. Validate package and docs
 
-## Tag And Verify
+```bash
+swift test
+swift package resolve --force-resolved-versions
+```
 
-- Create an annotated `vX.Y.Z` tag on the validated release commit.
-- Push the branch and tag without rewriting existing tags.
-- Confirm the package page, generated documentation, platform badge, and Swift-version badge update.
+## 5. Submit to Swift Package Index
 
-See `DISTRIBUTION.md` and `SPI_SUBMISSION_CHECKLIST.md` at repository root for complete commands.
+1. Open [https://swiftpackageindex.com/add-a-package](https://swiftpackageindex.com/add-a-package).
+2. Submit the public package repository URL.
+3. Verify docs are generated for target `SpacetimeDB`.
+4. Add package keywords, README metadata, and compatibility notes.
+
+## 6. Release checklist
+
+- CI green across macOS + iOS simulator builds
+- Benchmark smoke pass
+- DocC builds without errors
+- Tag pushed and visible on SPI

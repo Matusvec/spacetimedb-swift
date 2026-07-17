@@ -30,13 +30,13 @@ tools/swift-benchmark-baseline.sh macos-arm64-14.4-swift6.2
 
 Generated files:
 
-- `Benchmarks/.benchmarkBaselines/SpacetimeDBBenchmarks/<baseline-name>/results.json`
+- `sdks/swift/.benchmarkBaselines/SpacetimeDBBenchmarks/<baseline-name>/results.json`
   - raw `package-benchmark` baseline data (histograms + percentiles)
-- `Benchmarks/Baselines/captures/<baseline-name>/<timestamp>.baseline-results.json`
+- `sdks/swift/Benchmarks/Baselines/captures/<baseline-name>/<timestamp>.baseline-results.json`
   - copied snapshot of the raw baseline result
-- `Benchmarks/Baselines/captures/<baseline-name>/<timestamp>.summary.json`
+- `sdks/swift/Benchmarks/Baselines/captures/<baseline-name>/<timestamp>.summary.json`
   - compact JSON summary (`jsonSmallerIsBetter` format)
-- `Benchmarks/Baselines/captures/<baseline-name>/<timestamp>.metadata.txt`
+- `sdks/swift/Benchmarks/Baselines/captures/<baseline-name>/<timestamp>.metadata.txt`
   - machine/toolchain/profile details + exact benchmark commands
 
 `latest.*` aliases are also written in the same capture directory.
@@ -46,10 +46,8 @@ Generated files:
 Compare two named baselines:
 
 ```bash
-swift package --package-path Benchmarks benchmark baseline compare \
-  <baseline-a> <baseline-b> \
-  --target SpacetimeDBBenchmarks \
-  --no-progress
+cd sdks/swift
+swift package benchmark baseline compare <baseline-a> <baseline-b> --target SpacetimeDBBenchmarks --no-progress
 ```
 
 Use baseline names with matching machine profile for regression checks.

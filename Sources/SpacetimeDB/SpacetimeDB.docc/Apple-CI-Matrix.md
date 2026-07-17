@@ -1,44 +1,47 @@
-# Apple CI Matrix
+# Apple CI Matrix (macOS, iOS Simulator)
 
 ## Goals
 
-- Run the complete unit suite and Thread Sanitizer on macOS.
-- Verify every declared Apple platform can compile the `SpacetimeDB` product.
-- Keep deployment targets synchronized with `Package.swift` and the use of Swift 6 `Synchronization` primitives.
+- Keep package quality visible to Apple app teams.
+- Verify host and simulator compatibility in every PR.
+- Keep platform posture explicit: visionOS is not targeted yet.
 
-## Supported Platforms
+## Recommended matrix
 
-| Platform | Minimum | CI validation |
-| --- | ---: | --- |
-| macOS | 15 | Unit tests, Thread Sanitizer, release build, and DocC |
-| iOS | 18 | Generic simulator release build |
-| visionOS | 2 | Generic simulator release build |
-| watchOS | 11 | Generic simulator release build |
+- `macOS`:
+  - `swift test --package-path sdks/swift`
+  - lockfile validation
+  - demo builds
+  - benchmark smoke
+  - DocC build smoke
+- `iOS Simulator`:
+  - cross-compile SDK target using iOS simulator SDK
+- `visionOS`:
+  - intentionally unsupported in this package right now
+  - CI fails if `.visionOS(...)` is added without a coordinated posture update
 
-## Local Validation
+## iOS simulator build command
 
 ```bash
-swift test
-swift test --sanitize=thread
-swift build -c release
-
-xcodebuild -scheme SpacetimeDB \
-  -destination 'generic/platform=iOS Simulator' \
-  -configuration Release \
-  CODE_SIGNING_ALLOWED=NO \
-  build
-
-xcodebuild -scheme SpacetimeDB \
-  -destination 'generic/platform=visionOS Simulator' \
-  -configuration Release \
-  CODE_SIGNING_ALLOWED=NO \
-  build
-
-xcodebuild -scheme SpacetimeDB \
-  -destination 'generic/platform=watchOS Simulator' \
-  -configuration Release \
-  CODE_SIGNING_ALLOWED=NO \
-  build
+IOS_SDK_PATH="$(xcrun --sdk iphonesimulator --show-sdk-path)"
+swift build \
+  --package-path sdks/swift \
+  --target SpacetimeDB \
+  --triple arm64-apple-ios17.0-simulator \
+  --sdk "$IOS_SDK_PATH"
 ```
 
-The same matrix runs in `.github/workflows/ci.yml` on GitHub's `macos-26` image. Local cross-builds require the corresponding optional Xcode platform components to be installed.
+## visionOS posture guard
+
+```bash
+if rg -q '\.visionOS\(' sdks/swift/Package.swift; then
+  echo "visionOS currently unsupported; update CI/docs posture before enabling."
+  exit 1
+fi
+```
+
+## DocC smoke command
+
+```bash
+tools/swift-docc-smoke.sh
+```
