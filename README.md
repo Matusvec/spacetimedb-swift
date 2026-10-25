@@ -1,3 +1,5 @@
+> **This is MeNIN's fork** of [avias8/spacetimedb-swift](https://github.com/avias8/spacetimedb-swift) v0.23.0, with three fixes for bugs we hit on real iPhones (no implicit subscribe-all on connect, each row listed once under overlapping subscriptions, and a reconnect that replaces cached rows instead of stacking ghosts). The fixes are sent upstream as [avias8/spacetimedb-swift#3](https://github.com/avias8/spacetimedb-swift/pull/3). **Read [FORK.md](FORK.md)** for what changed, why, and how it was tested. The license is upstream's, unchanged (BSL 1.1).
+
 # SpacetimeDB Swift SDK
 
 Native Swift SDK for connecting to SpacetimeDB over `v2.bsatn.spacetimedb`, decoding realtime updates, and maintaining a typed local cache.
