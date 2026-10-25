@@ -78,6 +78,16 @@ public final class ClientCache: Sendable {
         return table
     }
 
+    /// Clears just these tables' rows, keeping their registrations (a fresh subscription's
+    /// rows replace them).
+    public func clear(tables names: Set<String>) {
+        let tables = state.withLock { state in names.compactMap { state.tables[$0] } }
+        for table in tables {
+            table.clear()
+        }
+        scheduleObservableSync(for: names)
+    }
+
     /// Clears all replicated rows while preserving generated table registrations.
     public func clear() {
         let tablesSnapshot = state.withLock { state in
