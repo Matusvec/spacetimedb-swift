@@ -108,7 +108,7 @@ final class CacheTests: XCTestCase {
     }
 
     @MainActor
-    func testDeferredIndexPreservesDuplicateRowsAcrossDelete() throws {
+    func testOverlappingInsertsAreRefcountedNotRepeated() throws {
         let cache = TableCache<Person>(tableName: "Person")
         let encoder = BSATNEncoder()
         let alice = Person(id: 1, name: "Alice")
@@ -116,9 +116,12 @@ final class CacheTests: XCTestCase {
         let aliceBytes = try encoder.encode(alice)
         let bobBytes = try encoder.encode(bob)
 
+        // Two overlapping subscriptions both deliver Alice: she is listed once, held twice.
         try cache.handleBulkInsert(rowBytesList: [aliceBytes, aliceBytes, bobBytes])
         cache.sync()
-        XCTAssertEqual(cache.rows, [alice, alice, bob])
+        XCTAssertEqual(cache.rows.count, 2)
+        XCTAssertEqual(cache.rows.filter { $0 == alice }.count, 1)
+        XCTAssertEqual(cache.rows.filter { $0 == bob }.count, 1)
 
         try cache.handleDelete(rowBytes: aliceBytes)
         cache.sync()
@@ -129,6 +132,26 @@ final class CacheTests: XCTestCase {
         try cache.handleDelete(rowBytes: aliceBytes)
         cache.sync()
         XCTAssertEqual(cache.rows, [bob])
+    }
+
+    @MainActor
+    func testClearTablesClearsOnlyThoseTables() throws {
+        let clientCache = ClientCache()
+        let people = TableCache<Person>(tableName: "Person")
+        let others = TableCache<Person>(tableName: "Other")
+        clientCache.registerTable(name: "Person", cache: people)
+        clientCache.registerTable(name: "Other", cache: others)
+        let encoder = BSATNEncoder()
+        try people.handleInsert(rowBytes: encoder.encode(Person(id: 1, name: "Stale")))
+        try others.handleInsert(rowBytes: encoder.encode(Person(id: 2, name: "Kept")))
+
+        clientCache.clear(tables: ["Person", "Missing"])
+        people.sync()
+        others.sync()
+
+        XCTAssertEqual(people.rows, [])
+        XCTAssertEqual(others.rows, [Person(id: 2, name: "Kept")])
+        XCTAssertTrue(clientCache.registeredTableNames.contains("Person"))
     }
 
     @MainActor

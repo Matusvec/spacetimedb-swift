@@ -336,6 +336,24 @@ final class NetworkTests: XCTestCase {
         XCTAssertEqual(handle.state, .ended)
     }
 
+    func testTableNamesInSubscriptionQueries() {
+        let names = SpacetimeClient.tableNames(in: [
+            "SELECT * FROM room WHERE code = 'ABCD'",
+            "select * from player where room_id = 7",
+            "SELECT *\nFROM turn",
+            "not a query",
+        ])
+        XCTAssertEqual(names, ["room", "player", "turn"])
+    }
+
+    @MainActor
+    func testSubscribeAppliedReturnsItsHandle() {
+        let client = SpacetimeClient(serverUrl: URL(string: "http://localhost:3000")!, moduleName: "test-module")
+        let handle = client.subscribe(queries: ["SELECT * FROM player"])
+        let applied = SubscribeApplied(requestId: RequestId(rawValue: 1), querySetId: QuerySetId(rawValue: 78), rows: QueryRows(tables: []))
+        XCTAssertTrue(client.handleSubscribeApplied(applied) === handle)
+    }
+
     @MainActor
     func testSubscriptionErrorEndsHandleAndCallsErrorCallback() {
         let client = SpacetimeClient(serverUrl: URL(string: "http://localhost:3000")!, moduleName: "test-module")
