@@ -455,19 +455,13 @@ public final class TableCache<T: Decodable & Sendable>: SpacetimeTableCacheProto
     /// Internal method to generate a flattened snapshot of all rows in deterministic order.
     private func snapshot() -> [T] {
         state.withLock { state in
-            if !state.entriesAreMaterialized {
-                return state.pendingRows.map(\.value)
-            }
-
+            // One element per distinct row. An entry's count is a refcount for overlapping
+            // subscriptions, not a multiplicity (as in the TypeScript SDK's `iter()`).
+            Self.materializeEntries(in: &state)
             var flattened: [T] = []
-            flattened.reserveCapacity(state.entries.count) // Baseline capacity
-            for entry in state.entries.values {
-                if entry.count > 0 {
-                    flattened.reserveCapacity(flattened.count + entry.count)
-                    for _ in 0..<entry.count {
-                        flattened.append(entry.value)
-                    }
-                }
+            flattened.reserveCapacity(state.entries.count)
+            for entry in state.entries.values where entry.count > 0 {
+                flattened.append(entry.value)
             }
             return flattened
         }
