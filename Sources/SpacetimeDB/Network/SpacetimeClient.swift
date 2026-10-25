@@ -770,7 +770,8 @@ public final class SpacetimeClient: @unchecked Sendable, WebSocketTransportDeleg
                 invokeDelegateCallback(named: "delegate.on_identity_received") {
                     $0.onIdentityReceived(identity: Array(connection.identity.rawBytes), token: connection.token)
                 }
-                subscribeAll(tables: Self.clientCache.registeredTableNames)
+                // Registering a table no longer subscribes to all of its rows: the app's own
+                // subscriptions (`subscribe(queries:)`) decide what the cache holds.
                 resubscribeManagedSubscriptions()
                 invokeDelegateCallback(named: "delegate.on_connect") { $0.onConnect() }
             case .transactionUpdate(let update):
